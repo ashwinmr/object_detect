@@ -24,7 +24,8 @@ def extract_boxes(annotation_file):
     return boxes
 
 def draw_bounding_boxes(ax,boxes,color = 'green'):
-    
+    """ Draw bounding boxes on axis
+    """
     for box in boxes:
         width = box[2]-box[0]
         height = box[3] - box[1]

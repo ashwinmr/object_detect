@@ -23,22 +23,32 @@ def extract_boxes(annotation_file):
         
     return boxes
 
-def draw_bounding_boxes(ax,boxes,edgecolor = 'green'):
+def draw_bounding_boxes(ax,boxes,color = 'green'):
     
     for box in boxes:
         width = box[2]-box[0]
         height = box[3] - box[1]
         xmin,ymin = box[0],box[1]
-        rect = patches.Rectangle((xmin,ymin),width,height, edgecolor = edgecolor, fill=False)
+        rect = patches.Rectangle((xmin,ymin),width,height, edgecolor = color, fill=False)
         ax.add_patch(rect)
     
 if __name__ == "__main__":
 
-    boxes = extract_boxes('GroundTruth.xml')
+    # Load imge
     image_path = 'TestImage.jpg'
     img = cv2.imread(image_path)
     img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+
+    # Plot image
     plt.imshow(img)
     ax = plt.gca()
-    draw_bounding_boxes(ax,boxes)
+
+    # Draw ground truth bouding boxes
+    boxes = extract_boxes('GroundTruth.xml')
+    draw_bounding_boxes(ax,boxes,color = 'green')
+
+    # Draw dummy detections bouding boxes
+    boxes = extract_boxes('DummyDetections.xml')
+    draw_bounding_boxes(ax,boxes,color = 'red')
+
     plt.show()

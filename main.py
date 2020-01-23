@@ -23,7 +23,7 @@ def extract_boxes(annotation_file):
         
     return boxes
 
-def draw_bounding_boxes(ax,boxes,color = 'green'):
+def draw_bounding_boxes(ax,boxes,color = 'cyan'):
     """ Draw bounding boxes on axis
     """
     for box in boxes:
@@ -32,6 +32,15 @@ def draw_bounding_boxes(ax,boxes,color = 'green'):
         xmin,ymin = box[0],box[1]
         rect = patches.Rectangle((xmin,ymin),width,height, edgecolor = color, fill=False)
         ax.add_patch(rect)
+
+def show_probabilities(ax,coords,probabilities, y_offset = 0, color = 'red'):
+    """ Show probabilities at coordinates on image
+    """
+    for i in range(len(coords)):
+        x = coords[i][0]
+        y = coords[i][1]
+        y -= y_offset
+        ax.text(x,y,'P:{:.2f}'.format(probabilities[i]),color = color, fontsize = 'x-small')
     
 if __name__ == "__main__":
 
@@ -46,10 +55,15 @@ if __name__ == "__main__":
 
     # Draw ground truth bouding boxes
     boxes = extract_boxes('GroundTruth.xml')
-    draw_bounding_boxes(ax,boxes,color = 'green')
+    draw_bounding_boxes(ax,boxes,color = 'cyan')
 
     # Draw dummy detections bouding boxes
     boxes = extract_boxes('DummyDetections.xml')
     draw_bounding_boxes(ax,boxes,color = 'red')
+
+    # Show dummy probabilities
+    coords = [[box[0], box[1]] for box in boxes]
+    probabilities = [0.5 for coord in coords]
+    show_probabilities(ax,coords,probabilities, y_offset = 10)
 
     plt.show()

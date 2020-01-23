@@ -40,7 +40,7 @@ def show_probabilities(ax,coords,probabilities, y_offset = 0, color = 'red'):
         x = coords[i][0]
         y = coords[i][1]
         y -= y_offset
-        ax.text(x,y,'P:{:.2f}'.format(probabilities[i]),color = color, fontsize = 'x-small')
+        ax.text(x,y,'P:{:.2f}'.format(probabilities[i]),color = color, fontsize = 'xx-small')
     
 if __name__ == "__main__":
 
@@ -51,6 +51,7 @@ if __name__ == "__main__":
 
     # Plot image
     plt.imshow(img)
+    plt.axis('off')
     ax = plt.gca()
 
     # Draw ground truth bouding boxes
@@ -65,5 +66,8 @@ if __name__ == "__main__":
     coords = [[box[0], box[1]] for box in boxes]
     probabilities = [0.5 for coord in coords]
     show_probabilities(ax,coords,probabilities, y_offset = 10)
+
+    # Save to file
+    plt.savefig('Output.png',dpi=300)
 
     plt.show()

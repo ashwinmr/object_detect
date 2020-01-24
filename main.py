@@ -87,7 +87,7 @@ def get_average_iou(boxes_detections, boxes_ground_truth):
 
 if __name__ == "__main__":
 
-    # Load imge
+    # Load image
     image_path = 'TestImage.jpg'
     img = cv2.imread(image_path)
     img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
     # Calculate average iou
     average_iou = get_average_iou(boxes_dummy, boxes_gt)
-    ax.text(100,200,'Average IOU = {:.2f}'.format(average_iou),color = 'red')
+    ax.text(100,150,'Average IOU = {:.2f}'.format(average_iou),color = 'red')
 
     # Save to file
     plt.savefig('Output.png',dpi=300)

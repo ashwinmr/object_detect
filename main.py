@@ -6,6 +6,10 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import pickle
 import math
+import random
+from keras.models import Sequential
+from keras.layers.core import Dense, Activation, Flatten
+from keras.models import load_model
 
 def parse_args():
   """ Parse arguments for program
@@ -18,7 +22,8 @@ def parse_args():
   create_parser = subparsers.add_parser('create', help='Create dataset from image and groundtruth')
   create_parser.add_argument('image_path', help='path to image file')
   create_parser.add_argument('gt_path', help='path to ground truth xml')
-  create_parser.add_argument('dataset_path', help='path to save dataset')
+  create_parser.add_argument('training_set_path', help='path to save training set')
+  create_parser.add_argument('test_set_path', help='path to save test set')
   create_parser.set_defaults(func='create')
 
   # View parser
@@ -31,23 +36,17 @@ def parse_args():
   prop_parser.add_argument('image_path', help='path to image file')
   prop_parser.set_defaults(func='propose')
 
-#   # Train parser
-#   train_parser = subparsers.add_parser('train', help='train a model using a dataset')
-#   train_parser.add_argument('dataset_path', help='path to dataset')
-#   train_parser.add_argument('model_path', help='path to save trained model')
-#   train_parser.set_defaults(func=train)
+  # Train parser
+  train_parser = subparsers.add_parser('train', help='train a model using a training set')
+  train_parser.add_argument('dataset_path', help='path to dataset')
+  train_parser.add_argument('model_path', help='path to save trained model')
+  train_parser.set_defaults(func='train')
 
-#   # Load parser
-#   load_parser = subparsers.add_parser('load', help='load data into a dataset')
-#   load_parser.add_argument('image_dir', help='directory of images')
-#   load_parser.add_argument('dataset_path', help='path to save dataset')
-#   load_parser.set_defaults(func=load)
-
-#   # Eval parser
-#   eval_parser = subparsers.add_parser('eval', help='eval a model using a dataset')
-#   eval_parser.add_argument('dataset_path', help='path to dataset')
-#   eval_parser.add_argument('model_path', help='path to saved model')
-#   eval_parser.set_defaults(func=eval)
+  # Eval parser
+  eval_parser = subparsers.add_parser('eval', help='eval a model using a test set')
+  eval_parser.add_argument('dataset_path', help='path to dataset')
+  eval_parser.add_argument('model_path', help='path to saved model')
+  eval_parser.set_defaults(func = 'eval')
 
   return parser.parse_args()
 
@@ -176,8 +175,8 @@ def gen_region_proposals(img, debug_plot=False):
 
     return boxes
 
-def create_dataset(image_path, gt_path, dataset_path, max_pos = 100, max_neg = 200, debug_plot = False):
-    """ Create training set from image using selective search and bounding boxes of ground truth
+def create_dataset(image_path, gt_path, training_set_path, test_set_path, max_pos = 100, max_neg = 200, debug_plot = False):
+    """ Create training and test set from image using selective search and bounding boxes of ground truth
     """
 
     # Load image
@@ -236,6 +235,23 @@ def create_dataset(image_path, gt_path, dataset_path, max_pos = 100, max_neg = 2
         imgs.append(img)
         labels.append(0)
 
+    # Shuffle and split into training and test
+    combined = list(zip(imgs,labels))
+    random.shuffle(combined)
+    imgs, labels = zip(*combined)
+    split_idx = int(0.8*len(imgs))
+    imgs_train = imgs[0:split_idx]
+    labels_train = labels[0:split_idx]
+    imgs_test = imgs[split_idx:]
+    labels_test = labels[split_idx:]
+
+    # Save the datasets
+
+    data_train = {'images':imgs_train,'labels':labels_train}
+    pickle.dump(data_train,open(training_set_path,"wb"))
+    data_test = {'images':imgs_test,'labels':labels_test}
+    pickle.dump(data_test,open(test_set_path,"wb"))
+
     # Debug plot
     if debug_plot:
         plt.imshow(main_image)
@@ -247,12 +263,6 @@ def create_dataset(image_path, gt_path, dataset_path, max_pos = 100, max_neg = 2
         # draw_bounding_boxes(ax,boxes_neg,color = 'blue')
 
         plt.show()
-
-    # Create dictionary of images and labels
-    data = {'images':imgs,'labels':labels}
-
-    # Save the data
-    pickle.dump(data,open(dataset_path,"wb"))
 
 def view_dataset(dataset_path):
   """ View data in a dataset
@@ -284,6 +294,77 @@ def view_dataset(dataset_path):
   plt.show()
 
   return
+
+def normalize_images(imgs):
+  """ Normalize images for learning
+  """
+  imgs_norm = imgs/255.0 - 0.5
+
+  return imgs_norm
+
+def denormalize_images(imgs_norm):
+  """ De normalize images for plotting
+  """
+  imgs = (imgs_norm + 0.5) * 255.0
+
+  return imgs
+
+def get_dataset(dataset_path):
+    """ Get dataset from a dataset file
+    """
+    # Load dataset
+    data = pickle.load(open(dataset_path,"rb"))
+
+    imgs = np.array(data['images'])
+    labels = np.array(data['labels'])
+
+    # Normalize images
+    x = normalize_images(imgs)
+    y = labels
+
+    return x, y
+
+def train_model(dataset_path, model_path):
+    """ Train a model using a dataset
+    """
+
+    # Get training set
+    x_train, y_train = get_dataset(dataset_path)
+
+    # Create ML model
+    model = Sequential([
+        Flatten(input_shape=x_train[0].shape),
+        Dense(1,activation='sigmoid'),
+    ])
+
+    # Train the model
+    model.compile(optimizer='rmsprop',
+                    loss='binary_crossentropy',
+                    metrics=['accuracy'])
+    model.fit(x_train, y_train, epochs=3, validation_split = 0.2)
+
+    # Save the model
+    model.save(model_path)
+
+def evaluate_model(dataset_path, model_path):
+    """ evaluate the model in test mode using a dataset
+    """
+    # Load the trained model
+    model = load_model(model_path)
+
+    # Get data set
+    x_test, y_test = get_dataset(dataset_path)
+
+    # Evluate the model
+    metrics = model.evaluate(x_test, y_test)
+
+    # Display results
+    for metric_i in range(len(model.metrics_names)):
+        metric_name = model.metrics_names[metric_i]
+        metric_value = metrics[metric_i]
+        print('{}: {}'.format(metric_name, metric_value))
+
+    return
 
 def dummy_detection():
     """ Dummy detection pipeline
@@ -325,10 +406,14 @@ if __name__ == "__main__":
     args = parse_args()
 
     if args.func == 'create':
-        create_dataset(args.image_path, args.gt_path, args.dataset_path)
+        create_dataset(args.image_path, args.gt_path, args.training_set_path, args.test_set_path)
     if args.func == 'view':
         view_dataset(args.dataset_path)
     if args.func == 'propose':
         img = cv2.imread(args.image_path)
         img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
         gen_region_proposals(img,True)
+    if args.func == 'train':
+        train_model(args.dataset_path, args.model_path)
+    if args.func == 'eval':
+        evaluate_model(args.dataset_path, args.model_path)

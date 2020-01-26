@@ -48,6 +48,12 @@ def parse_args():
   eval_parser.add_argument('model_path', help='path to saved model')
   eval_parser.set_defaults(func = 'eval')
 
+  # Detect parser
+  detect_parser = subparsers.add_parser('detect', help='detect objects in an image using a trained model')
+  detect_parser.add_argument('image_path', help='path to image')
+  detect_parser.add_argument('model_path', help='path to saved model')
+  detect_parser.set_defaults(func = 'detect')
+
   return parser.parse_args()
 
 def extract_boxes(annotation_file):
@@ -366,6 +372,67 @@ def evaluate_model(dataset_path, model_path):
 
     return
 
+def detect_image(image_path, model_path):
+    """ Use the pipeline and ML model to detect objects in an image
+    """
+
+    # Load the trained model
+    model = load_model(model_path)
+
+    # Load the image
+    main_image = cv2.imread(image_path)
+    main_image = cv2.cvtColor(main_image,cv2.COLOR_BGR2RGB)
+
+    # Gen region proposals
+    boxes_prop = gen_region_proposals(main_image, debug_plot=False)
+
+    # Create image array for prediction
+    imgs = []
+    for box in boxes_prop:
+        xmin, ymin, xmax, ymax = box
+        img = main_image[ymin:ymax,xmin:xmax]
+        img = cv2.resize(img,(100,100))
+        img = normalize_images(img)
+        imgs.append(img)
+    imgs = np.array(imgs)
+
+    # Predict
+    pred = model.predict(imgs)
+
+    # Compile detected boxes and probabilities
+    boxes_det = []
+    probabilities = []
+
+    for i in range(len(imgs)):
+        if pred[i] > 0.9:
+            boxes_det.append(boxes_prop[i])
+            probabilities.append(pred[i][0])
+
+    # Plot
+    plt.imshow(main_image)
+    plt.axis('off')
+    ax = plt.gca()
+
+    # Draw ground truth bounding boxes
+    boxes_gt = extract_boxes('GroundTruth.xml')
+    draw_bounding_boxes(ax,boxes_gt,color = 'cyan')
+
+    # Draw detection bounding boxes
+    draw_bounding_boxes(ax,boxes_det,color = 'red')
+
+    # Show probabilities
+    coords = [[box[0], box[1]] for box in boxes_det]
+    show_probabilities(ax,coords,probabilities, y_offset = 10)
+
+    # Calculate average iou
+    average_iou = get_average_iou(boxes_det, boxes_gt)
+    ax.text(100,150,'Average IOU = {:.2f}'.format(average_iou),color = 'red')
+
+    # Save to file
+    plt.savefig('Output.png',dpi=300)
+
+    plt.show()
+
 def dummy_detection():
     """ Dummy detection pipeline
     """
@@ -417,3 +484,5 @@ if __name__ == "__main__":
         train_model(args.dataset_path, args.model_path)
     if args.func == 'eval':
         evaluate_model(args.dataset_path, args.model_path)
+    if args.func == 'detect':
+        detect_image(args.image_path, args.model_path)

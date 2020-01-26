@@ -8,7 +8,8 @@ import pickle
 import math
 import random
 from keras.models import Sequential
-from keras.layers.core import Dense, Activation, Flatten
+from keras.layers.core import Dense, Activation, Flatten, Lambda
+from keras.layers import Conv2D
 from keras.models import load_model
 
 def parse_args():
@@ -301,32 +302,14 @@ def view_dataset(dataset_path):
 
   return
 
-def normalize_images(imgs):
-  """ Normalize images for learning
-  """
-  imgs_norm = imgs/255.0 - 0.5
-
-  return imgs_norm
-
-def denormalize_images(imgs_norm):
-  """ De normalize images for plotting
-  """
-  imgs = (imgs_norm + 0.5) * 255.0
-
-  return imgs
-
 def get_dataset(dataset_path):
     """ Get dataset from a dataset file
     """
     # Load dataset
     data = pickle.load(open(dataset_path,"rb"))
 
-    imgs = np.array(data['images'])
-    labels = np.array(data['labels'])
-
-    # Normalize images
-    x = normalize_images(imgs)
-    y = labels
+    x = np.array(data['images'])
+    y = np.array(data['labels'])
 
     return x, y
 
@@ -339,7 +322,10 @@ def train_model(dataset_path, model_path):
 
     # Create ML model
     model = Sequential([
-        Flatten(input_shape=x_train[0].shape),
+        Lambda(lambda x: x/255.0 -0.5),
+        Conv2D(32,(3,3),activation="relu"),
+        Conv2D(128,(3,3),activation="relu"),
+        Flatten(),
         Dense(1,activation='sigmoid'),
     ])
 
@@ -347,7 +333,7 @@ def train_model(dataset_path, model_path):
     model.compile(optimizer='rmsprop',
                     loss='binary_crossentropy',
                     metrics=['accuracy'])
-    model.fit(x_train, y_train, epochs=3, validation_split = 0.2)
+    model.fit(x_train, y_train, epochs=8, validation_split = 0.2)
 
     # Save the model
     model.save(model_path)
@@ -392,7 +378,6 @@ def detect_image(image_path, model_path):
         xmin, ymin, xmax, ymax = box
         img = main_image[ymin:ymax,xmin:xmax]
         img = cv2.resize(img,(100,100))
-        img = normalize_images(img)
         imgs.append(img)
     imgs = np.array(imgs)
 

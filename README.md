@@ -58,7 +58,7 @@ python main.py train <path/to/dataset.p> <path/to/output/model.h5>
 
 Example:
 ```
-python main.py train 'training_set.p` 'model.h5'
+python main.py train 'training_set.p' 'model.h5'
 ```
 
 Evaluate the model using

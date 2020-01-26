@@ -2,6 +2,7 @@
 Program for detecting objects in an image.
 
 This program takes an aerial image and detects humans.
+It currently uses selective search to generate region proposals and then uses a CNN to detect objects
 
 ## Features
 - Find objects in image and draw bounding boxes with probabilities

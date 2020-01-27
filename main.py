@@ -9,7 +9,7 @@ import math
 import random
 from keras.models import Sequential
 from keras.layers.core import Dense, Activation, Flatten, Lambda
-from keras.layers import Conv2D
+from keras.layers import Conv2D, MaxPooling2D
 from keras.models import load_model
 
 def parse_args():
@@ -182,7 +182,7 @@ def gen_region_proposals(img, debug_plot=False):
 
     return boxes
 
-def create_dataset(image_path, gt_path, training_set_path, test_set_path, max_pos = 100, max_neg = 200, debug_plot = False):
+def create_dataset(image_path, gt_path, training_set_path, test_set_path, max_pos = 100, max_neg = 500, debug_plot = False):
     """ Create training and test set from image using selective search and bounding boxes of ground truth
     """
 
@@ -325,6 +325,8 @@ def train_model(dataset_path, model_path):
         Lambda(lambda x: x/255.0 -0.5),
         Conv2D(32,(3,3),activation="relu"),
         Conv2D(128,(3,3),activation="relu"),
+        MaxPooling2D(),
+        Conv2D(512,(3,3),activation="relu"),
         Flatten(),
         Dense(1,activation='sigmoid'),
     ])
@@ -333,6 +335,7 @@ def train_model(dataset_path, model_path):
     model.compile(optimizer='rmsprop',
                     loss='binary_crossentropy',
                     metrics=['accuracy'])
+
     model.fit(x_train, y_train, epochs=8, validation_split = 0.2)
 
     # Save the model
@@ -389,7 +392,7 @@ def detect_image(image_path, model_path):
     probabilities = []
 
     for i in range(len(imgs)):
-        if pred[i] > 0.9:
+        if pred[i] > 0.7:
             boxes_det.append(boxes_prop[i])
             probabilities.append(pred[i][0])
 

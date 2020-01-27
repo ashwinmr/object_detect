@@ -392,7 +392,7 @@ def detect_image(image_path, model_path):
     probabilities = []
 
     for i in range(len(imgs)):
-        if pred[i] > 0.7:
+        if pred[i] > 0.8:
             boxes_det.append(boxes_prop[i])
             probabilities.append(pred[i][0])
 
